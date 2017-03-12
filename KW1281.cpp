@@ -21,28 +21,28 @@ NOTE: For the level shifting, I used a 'AutoDia K409 Profi USB adapter', disasse
 //#include "KW1281.h"
 speedo_Kw::speedo_Kw(){
 }
-		bool status = 1;
-			uint8_t currAddr = 0;
-			uint8_t blockCounter = 0;
-			uint8_t errorTimeout = 0;
-			uint8_t errorData = 0;
-			bool connected = false;
-			int sensorCounter = 0;
-			int pageUpdateCounter = 0;
-			uint8_t currPage = 2;
-			int8_t coolantTemp = 0;         // Kühlwassertemperatur
-			float Lambda=0;                 // Lambdasondenspannung
-			int8_t intakeAirTemp = 0;       // Ansauglufttemperatur
-			float engineLoad = 0;           // Lastzustand
-			int   engineSpeed = 0;          // Drehzahl
-			float throttleValve = 0;        // Drosselklappenstellung
-			float supplyVoltage = 0;        // Batteriespannung
-			uint8_t vehicleSpeed = 0;       // Geschwindigkeit
-			uint8_t fuelConsumption = 0;    // Verbrauch
-			 int e; //Pointer fuer Fehlertext
-			 int f; // Pointer fuer Fehlergrund
+bool status = 1;
+uint8_t currAddr = 0;
+uint8_t blockCounter = 0;
+uint8_t errorTimeout = 0;
+uint8_t errorData = 0;
+bool connected = false;
+int sensorCounter = 0;
+int pageUpdateCounter = 0;
+uint8_t currPage = 2;
+int8_t coolantTemp = 0;         // Kühlwassertemperatur
+float Lambda=0;                 // Lambdasondenspannung
+int8_t intakeAirTemp = 0;       // Ansauglufttemperatur
+float engineLoad = 0;           // Lastzustand
+int   engineSpeed = 0;          // Drehzahl
+float throttleValve = 0;        // Drosselklappenstellung
+float supplyVoltage = 0;        // Batteriespannung
+uint8_t vehicleSpeed = 0;       // Geschwindigkeit
+uint8_t fuelConsumption = 0;    // Verbrauch
+int e; //Pointer fuer Fehlertext
+int f; // Pointer fuer Fehlergrund
 
-	String floatToString(float v){
+String floatToString(float v){
 		String res;
 		char buf[16];
 		dtostrf(v,4, 2, buf);
@@ -104,15 +104,16 @@ speedo_Kw::speedo_Kw(){
 void speedo_Kw::disconnect(){
     connected = false;
     currAddr = 0;
+    Serial.println("disconnect");
   }
   void speedo_Kw::obdWrite(uint8_t data){
-  	  #ifdef DEBUG
-	  	  Serial.print("uC:");
-	  	  Serial.println(data, HEX);
-  	  #endif
+//#ifdef DEBUG
+  	 Serial.print("obdWrite: uC:");
+  	 Serial.println(data, HEX);
+//#endif
    //*********************  ADDED 4ms delay ****************************************************************
-	  delay(4);
-    Serial.write(data);                // sendChar() 28.04.2016 20:35
+	delay(4);
+	Serial3.write(data);                // sendChar() 28.04.2016 20:35
     delayMicroseconds(1300);            // Uart byte Tx duration at 9600 baud ~= 1040 us
     uint8_t dummy = Serial3.read();     // Read Echo from the line
     if (dummy != data ) {
@@ -122,6 +123,7 @@ void speedo_Kw::disconnect(){
   };
 
   void speedo_Kw::readFromProgmemArray(int pos,int pos2){
+	  Serial.println("readFromProgmemArray: ");
 	  char printBuffer[50];
 	  char printBuffer2[60];
 	  strcpy_P(printBuffer, (char*)pgm_read_word(&(ECListe[pos])));
@@ -134,28 +136,33 @@ void speedo_Kw::disconnect(){
 
   uint8_t speedo_Kw::obdRead(){
 	  unsigned long timeout = millis() + 1000;
+	  Serial.println("obdRead: ");
 	  while (!Serial3.available()) {
 		  if (millis() >= timeout) {
+			  Serial.println("ERROR: obdRead timeout");
 			  disconnect();
 			  errorTimeout++;
 			  return 0;
 		  }
 	    }
 	    uint8_t data = Serial3.read();
-	    while (data == 0xff) {
-	    	data = Serial3.read();
-	    }
+	    Serial.print("ECU:");
+	    Serial.println(data, HEX);
+	    //while (data == 0xff) {
+	    	//data = Serial3.read();
+	    //}
 	    return data;
 	  }
 
   void speedo_Kw::send5baud(uint8_t data) {
     // // 1 start bit, 7 data bits, 1 parity, 1 stop bit
-  #define bitcount 10
+	  Serial.println("send5baud:");
+	  #define bitcount 10
   byte bits[bitcount];
   byte even = 1;
   byte bit;
-  pinMode(pinKLineTX, OUTPUT);
-  digitalWrite(pinKLineTX, LOW);
+  //pinMode(pinKLineTX, OUTPUT);
+  //digitalWrite(pinKLineTX, LOW);
   delay(500);
   for (int i = 0; i < bitcount; i++) {
       bit = 0;
@@ -166,6 +173,14 @@ void speedo_Kw::disconnect(){
         bit = (byte) ((data & (1 << (i - 1))) != 0);
         even = even ^ bit;
       }
+      Serial.print("bit");
+          Serial.print(i);
+          Serial.print("=");
+          Serial.print(bit);
+          if (i == 0) Serial.print(" startbit");
+            else if (i == 8) Serial.print(" parity");
+            else if (i == 9) Serial.print(" stopbit");
+          Serial.println();
       bits[i] = bit;
     }
     // now send bit stream
@@ -175,16 +190,15 @@ void speedo_Kw::disconnect(){
     	  delay(200);
     	  if (i == bitcount) break;
       }
-      if (bits[i] == 1) {
+     if (bits[i] == 1) {
         // high
-    	  digitalWrite(pinKLineTX, LOW);
+    	 // digitalWrite(pinKLineTX, LOW);
       } else {
         // low
-    	  digitalWrite(pinKLineTX, HIGH);
+    	  //digitalWrite(pinKLineTX, HIGH);
       }
     }
-
-    digitalWrite(pinKLineTX, LOW);
+    Serial3.flush();
   };
 
 
@@ -209,7 +223,7 @@ void speedo_Kw::disconnect(){
     Serial.println();
     for (int i=0; i < size; i++){
       uint8_t data = s[i];
-      Serial.print(data);
+      obdWrite(data);
 
       if (i < size-1){
     	  uint8_t complement = obdRead();
@@ -297,21 +311,19 @@ void speedo_Kw::disconnect(){
   }
 
   bool speedo_Kw::connect(uint8_t addr, int baudrate){
-	    blockCounter = 0;
-	    currAddr = 0;
-	    KWP5BaudInit(addr);
-	    while (Serial3.available() > 0){
-	            Serial3.read();
-	          }
-	   //PIOD->PIO_PDR = 0x10;
-	  //  Serial.begin(baudrate);
-	  //  while (!Serial) ;
+	  Serial.print("-----connect addr=");
+	  Serial.print(addr);
+	  Serial.print("baud=");
+	  Serial.println(baudrate);
+	  blockCounter = 0;
+	  currAddr = 0;
+	  Serial3.begin(baudrate);
+	  KWP5BaudInit(addr);
 	    // answer: 0x55, 0x01, 0x8A
 	    char s[3];
-	    int sizeb = 3;
-	    if (!KWPReceiveBlock(s, 3, sizeb)) {
-
-	      return false;
+	    int size = 3;
+	    if (!KWPReceiveBlock(s, 3, size)) {
+	    	return false;
 	    }
 	    if (    (((uint8_t)s[0]) != 0x55)
 	            ||   (((uint8_t)s[1]) != 0x01)
@@ -319,42 +331,17 @@ void speedo_Kw::disconnect(){
 	      disconnect();
 	      errorData++;
 	      return false;
-	  }
+	    }
 	    currAddr = addr;
-	      connected = true;
-	      if (!readConnectBlocks()) return false;
-	      return true;
-    Serial.print("------connect addr=");
-    Serial.print(addr);
-    Serial.print(" baud=");
-    Serial.println(baudrate);
-
-    blockCounter = 0;
-    currAddr = 0;
-    Serial.begin(baudrate);
-    KWP5BaudInit(addr);
-    // answer: 0x55, 0x01, 0x8A
-
-    int size = 3;
-    if (!KWPReceiveBlock(s, 3, size)) return false;
-    if (    (((uint8_t)s[0]) != 0x55)
-       ||   (((uint8_t)s[1]) != 0x01)
-       ||   (((uint8_t)s[2]) != 0x8A)   ){
-      Serial.println("ERROR: invalid magic");
-      disconnect();
-      errorData++;
-      return false;
-    }
-    currAddr = addr;
-    connected = true;
-    if (!readConnectBlocks()) return false;
-    return true;
-  }
+	    connected = true;
+	    if (!readConnectBlocks()) return false;
+	    return true;
+     }
 
   bool speedo_Kw::readConnectBlocks(){
     // read connect blocks
     Serial.println("------readconnectblocks");
-    String info;
+    //String info;
     while (true){
       int size = 0;
       char s[64];
@@ -367,40 +354,39 @@ void speedo_Kw::disconnect(){
         errorData++;
         return false;
       }
-      String text = String(s);
-      info += text.substring(3, size-2);
       if (!KWPSendAckBlock()) return false;
     }
 
     Serial.print("label=");
-    sprintf(printBuffer,"%i",info);
-    Serial.print(printBuffer);
 
-    //lcd.setCursor(0, 1);
-    //lcd.print(info);
     return true;
   }
 
-  //*************************************Fehlerspeicher**************************************
+  //*************************************Fehlerspeicher lesen*************************************
   bool speedo_Kw::readError (){
+	  Serial.print("readError:");
 	  int errorlist=0;
 	  char s[64];
 	  bool MKL=false;
-	  if (currAddr != ADR_Engine) {
-		  connect(ADR_Engine, 9600);
-       } else {
+	  //if (currAddr != ADR_Engine) {
+	//	  connect(ADR_Engine, 9600);
+     //  } else {
     	   Serial.println("+++++++++++++++Fehlerspeicher+++++++++++++++++++++");
-       };
+      // };
 	  sprintf(s,"\x03%c\x07\x03",blockCounter, errorlist);
 	  if (!KWPSendBlock(s, 4)) return false;
 	  int size = 0;
 	  KWPReceiveBlock(s, 64, size);
 	  int counter = (size-4) / 3;           // Anzahl der gespeicherten Fehler
+	  zaehler=counter;
    // Wenn kein Fehler gespeichert ist, dann counter auf 0 setzen
 	  if (s[5]=='\x88'){ //Das Steuergerät sendet, wenn kein Fehler gespeichert ist an 6. Stelle ein x88
 		  Serial.println ("Kein Fehler gespeichert");
 		  counter=0;
 		  MKL=false;
+	  }
+	  else{
+		  MKL=true;
 	  }
   #ifdef DEBUG
     Serial.print("counter=");
@@ -505,6 +491,7 @@ void speedo_Kw::disconnect(){
     }
     if (s[6] != '\x88') {
     	MKL=true;
+    	//KWPSendAckBlock;
       Serial.println("Fehler gefunden:");
       //return false;
     }
@@ -524,6 +511,23 @@ void speedo_Kw::disconnect(){
    // Serial.println(count);
    return (KWPSendBlock(s, 4));
   }
+//*************************************Fehlerspeicher loeschen **********************
+  bool speedo_Kw::deleteError (){
+	  Serial.print("deleteError:");
+	  int del_error=0;
+	  	  char s[64];
+	  	  bool MKL=false;
+	  if (currAddr != ADR_Engine) {
+	 		  connect(ADR_Engine, 9600);
+	        } else {
+	     	   Serial.println("+++++++++Fehlerspeicher loeschen+++++++++++");
+	        };
+	 	  sprintf(s,"\x03%c\x05\x03",blockCounter, del_error);
+	 	  if (!KWPSendBlock(s, 4)) return false;
+	 	  int size = 0;
+	 	  KWPReceiveBlock(s, 64, size);
+  }
+
 
   bool speedo_Kw::readSensors(int group){
    Serial.print("------readSensors ");
@@ -546,7 +550,7 @@ void speedo_Kw::disconnect(){
       byte k=s[3 + idx*3];
       byte a=s[3 + idx*3+1];
       byte b=s[3 + idx*3+2];
-      String n;
+      //String n;
       float v = 0;
       Serial.print("type=");
       Serial.print(k);
@@ -556,42 +560,42 @@ void speedo_Kw::disconnect(){
       Serial.print(b);
       Serial.print("  text=");
 
-      String t = "";
-      String units = "";
+      //char t[5];
+      //String units;
       char buf[32];
       switch (k){
-        case 1:  v=0.2*a*b;             units=("rpm"); break;
-        case 2:  v=a*0.002*b;           units=("%%"); break;
-        case 3:  v=0.002*a*b;           units=("Deg"); break;
-        case 4:  v=abs(b-127)*0.01*a;   units=("ATDC"); break;
-        case 5:  v=a*(b-100)*0.1;       units=("°C");break;
-        case 6:  v=0.001*a*b;           units=("V");break;
-        case 7:  v=0.01*a*b;            units=("km/h");break;
-        case 8:  v=0.1*a*b;             units=(" ");break;
-        case 9:  v=(b-127)*0.02*a;      units=("Deg");break;
-        case 10: if (b == 0) t=("COLD"); else t=("WARM");break;
-        case 11: v=0.0001*a*(b-128)+1;  units = (" ");break;
-        case 12: v=0.001*a*b;           units =("Ohm");break;
-        case 13: v=(b-127)*0.001*a;     units =("mm");break;
-        case 14: v=0.005*a*b;           units=("bar");break;
-        case 15: v=0.01*a*b;            units=("ms");break;
-        case 18: v=0.04*a*b;            units=("mbar");break;
-        case 19: v=a*b*0.01;            units=("l");break;
-        case 20: v=a*(b-128)/128;       units=("%%");break;
-        case 21: v=0.001*a*b;           units=("V");break;
-        case 22: v=0.001*a*b;           units=("ms");break;
-        case 23: v=b/256*a;             units=("%%");break;
-        case 24: v=0.001*a*b;           units=("A");break;
-        case 25: v=(b*1.421)+(a/182);   units=("g/s");break;
-        case 26: v=float(b-a);          units=("C");break;
-        case 27: v=abs(b-128)*0.01*a;   units=("°");break;
-        case 28: v=float(b-a);          units=(" ");break;
-        case 30: v=b/12*a;              units=("Deg k/w");break;
-        case 31: v=b/2560*a;            units=("°C");break;
-        case 33: v=100*b/a;             units=("%%");break;
-        case 34: v=(b-128)*0.01*a;      units=("kW");break;
-        case 35: v=0.01*a*b;            units=("l/h");break;
-        case 36: v=((unsigned long)a)*2560+((unsigned long)b)*10;  units=("km");break;
+        case 1:  v=0.2*a*b;        		break;//units="rpm"; break;
+        case 2:  v=a*0.002*b;           break;//units=("%%"); break;
+        case 3:  v=0.002*a*b;           break;//units=("Deg"); break;
+        case 4:  v=abs(b-127)*0.01*a;   break;//units=("ATDC"); break;
+        case 5:  v=a*(b-100)*0.1;       break;//units=("°C");break;
+        case 6:  v=0.001*a*b;           break;//units=("V");break;
+        case 7:  v=0.01*a*b;            break;//units=("km/h");break;
+        case 8:  v=0.1*a*b;             break;//units=(" ");break;
+        case 9:  v=(b-127)*0.02*a;      break;//units=("Deg");break;
+        case 10: if (b == 0) v=0; else v=80; break;//units=("COLD"); else units=("WARM");break;
+        case 11: v=0.0001*a*(b-128)+1;  break;//units = (" ");break;
+        case 12: v=0.001*a*b;           break;//units =("Ohm");break;
+        case 13: v=(b-127)*0.001*a;     break;//units =("mm");break;
+        case 14: v=0.005*a*b;           break;//units=("bar");break;
+        case 15: v=0.01*a*b;            break;//units=("ms");break;
+        case 18: v=0.04*a*b;            break;//units=("mbar");break;
+        case 19: v=a*b*0.01;            break;//units=("l");break;
+        case 20: v=a*(b-128)/128;       break;//units=("%%");break;
+        case 21: v=0.001*a*b;           break;//units=("V");break;
+        case 22: v=0.001*a*b;           break;//units=("ms");break;
+        case 23: v=b/256*a;             break;//units=("%%");break;
+        case 24: v=0.001*a*b;           break;//units=("A");break;
+        case 25: v=(b*1.421)+(a/182);   break;//units=("g/s");break;
+        case 26: v=float(b-a);          break;//units=("C");break;
+        case 27: v=abs(b-128)*0.01*a;   break;//units=("°");break;
+        case 28: v=float(b-a);          break;//units=(" ");break;
+        case 30: v=b/12*a;              break;//units=("Deg k/w");break;
+        case 31: v=b/2560*a;            break;//units=("°C");break;
+        case 33: v=100*b/a;             break;//units=("%%");break;
+        case 34: v=(b-128)*0.01*a;      break;//units=("kW");break;
+        case 35: v=0.01*a*b;            break;//units=("l/h");break;
+        case 36: v=((unsigned long)a)*2560+((unsigned long)b)*10;  break;//units=("km");break;
         case 37: v=b; break; // oil pressure ?!
         // ADP: FIXME!
         /*case 37: switch(b){
@@ -600,36 +604,36 @@ void speedo_Kw::disconnect(){
                case 0x10: sprintf(buf, F("ADP ERR (%d,%d)"), a,b); t=String(buf); break;
                default: sprintf(buf, F("ADP (%d,%d)"), a,b); t=String(buf); break;
             }*/
-        case 38: v=(b-128)*0.001*a;        units=("Deg k/w"); break;
-        case 39: v=b/256*a;                units=("mg/h"); break;
-        case 40: v=b*0.1+(25.5*a)-400;     units=("A"); break;
-        case 41: v=b+a*255;                units=("Ah"); break;
-        case 42: v=b*0.1+(25.5*a)-400;     units=("Kw"); break;
-        case 43: v=b*0.1+(25.5*a);         units=("V"); break;
-        case 44: sprintf(buf, "%2d:%2d", a,b); t=String(buf); break;
-        case 45: v=0.1*a*b/100;            units=(" "); break;
-        case 46: v=(a*b-3200)*0.0027;      units=("Deg k/w"); break;
-        case 47: v=(b-128)*a;              units=("ms"); break;
-        case 48: v=b+a*255;                units=(" "); break;
-        case 49: v=(b/4)*a*0.1;            units=("mg/h"); break;
-        case 50: v=(b-128)/(0.01*a);       units=("mbar"); break;
-        case 51: v=((b-128)/255)*a;        units=("mg/h"); break;
-        case 52: v=b*0.02*a-a;             units=("Nm"); break;
-        case 53: v=(b-128)*1.4222+0.006*a;  units=("g/s"); break;
-        case 54: v=a*256+b;                units=("count"); break;
-        case 55: v=a*b/200;                units=("s"); break;
-        case 56: v=a*256+b;                units=("WSC"); break;
-        case 57: v=a*256+b+65536;          units=("WSC"); break;
-        case 59: v=(a*256+b)/32768;        units=("g/s"); break;
-        case 60: v=(a*256+b)*0.01;         units=("sec"); break;
-        case 62: v=0.256*a*b;              units=("S"); break;
-        case 64: v=float(a+b);             units=("Ohm"); break;
-        case 65: v=0.01*a*(b-127);         units=("mm"); break;
-        case 66: v=(a*b)/511.12;          units=("V"); break;
-        case 67: v=(640*a)+b*2.5;         units=("Deg"); break;
-        case 68: v=(256*a+b)/7.365;       units=("deg/s");break;
-        case 69: v=(256*a +b)*0.3254;     units=("Bar");break;
-        case 70: v=(256*a +b)*0.192;      units=("m/s^2");break;
+        case 38: v=(b-128)*0.001*a;        break;//units=("Deg k/w"); break;
+        case 39: v=b/256*a;                break;//units=("mg/h"); break;
+        case 40: v=b*0.1+(25.5*a)-400;     break;//units=("A"); break;
+        case 41: v=b+a*255;                break;//units=("Ah"); break;
+        case 42: v=b*0.1+(25.5*a)-400;     break;//units=("Kw"); break;
+        case 43: v=b*0.1+(25.5*a);         break;//units=("V"); break;
+        case 44: sprintf(buf, "%2d:%2d", a,b);// t=String(buf); break;
+        case 45: v=0.1*a*b/100;            break;//units=(" "); break;
+        case 46: v=(a*b-3200)*0.0027;      break;//units=("Deg k/w"); break;
+        case 47: v=(b-128)*a;              break;//units=("ms"); break;
+        case 48: v=b+a*255;                break;//units=(" "); break;
+        case 49: v=(b/4)*a*0.1;            break;//units=("mg/h"); break;
+        case 50: v=(b-128)/(0.01*a);       break;//units=("mbar"); break;
+        case 51: v=((b-128)/255)*a;        break;//units=("mg/h"); break;
+        case 52: v=b*0.02*a-a;             break;//units=("Nm"); break;
+        case 53: v=(b-128)*1.4222+0.006*a;  break;//units=("g/s"); break;
+        case 54: v=a*256+b;                break;//units=("count"); break;
+        case 55: v=a*b/200;                break;//units=("s"); break;
+        case 56: v=a*256+b;                break;//units=("WSC"); break;
+        case 57: v=a*256+b+65536;          break;//units=("WSC"); break;
+        case 59: v=(a*256+b)/32768;        break;//units=("g/s"); break;
+        case 60: v=(a*256+b)*0.01;         break;//units=("sec"); break;
+        case 62: v=0.256*a*b;              break;//units=("S"); break;
+        case 64: v=float(a+b);             break;//units=("Ohm"); break;
+        case 65: v=0.01*a*(b-127);         break;//units=("mm"); break;
+        case 66: v=(a*b)/511.12;          break;//units=("V"); break;
+        case 67: v=(640*a)+b*2.5;         break;//units=("Deg"); break;
+        case 68: v=(256*a+b)/7.365;       break;//units=("deg/s");break;
+        case 69: v=(256*a +b)*0.3254;     break;//units=("Bar");break;
+        case 70: v=(256*a +b)*0.192;      break;//units=("m/s^2");break;
         default: sprintf(buf, "%2x, %2x      ", a, b); break;
 
       }
@@ -659,14 +663,14 @@ void speedo_Kw::disconnect(){
             break;
           }
           break;
-   }
-    if (units.length() != 0){
-        dtostrf(v,4, 2, buf);
+   }/*
+    if (units!= 0){
+      dtostrf(v,4, 2, buf);
         t=String(buf) + " " + units;
         char printBuffer4[10];
             sprintf(printBuffer4,"%i",t);
             Serial.print(printBuffer4);
-    }
+    }*/
     }
     sensorCounter++;
     return true;
@@ -675,7 +679,9 @@ void speedo_Kw::disconnect(){
 
 
   void speedo_Kw::updateDisplay(){
-    if (!connected){
+
+	  Serial.print("updateDisplay:");
+	  if (!connected){
       if ( (errorTimeout != 0) || (errorData != 0) ){
         //lcd.setCursor(0,3);
         //lcd.print("err to=");
@@ -706,38 +712,32 @@ void speedo_Kw::disconnect(){
   }
   char check[64];
   void speedo_Kw::OBD_setup(){
-
-       Serial3.begin(19200);
-
-
-    pinMode(pinKLineTX, OUTPUT);
-    digitalWrite(pinKLineTX, HIGH);
-    Serial.println("START");
+	  Serial.print("OBD_setup:");
+      Serial3.begin(19200);
+      Serial.println("START");
     }
 
 
   void speedo_Kw::OBD_loop(){
     currPage=2;
+    Serial.print("OBD_loop Start");
     switch (currPage){
       case 2:
           if (currAddr != ADR_Engine) {
-          connect(ADR_Engine, 9600);
+          Serial.println(" Not ADR Engine");
+        	  connect(ADR_Engine, 9600);
         } else {
-          Serial.println("+++++++++++++++Fehlerspeicher+++++++++++++++++++++");
+          Serial.println("++++++++++++Fehlerspeicher wird aufgerufen+++++");
           	  readError();
 
           if (currAddr = 0xFF){
           break;
           }
-          	  readSensors(1);
-          	  readSensors(2);
-          	  readSensors(5);
+          //readSensors(1);
+         // readSensors(2);
+          //readSensors(5);
         }
         break;
-      case 3:
-      if (currAddr = 0x00){
-        break;
-      }
       }
 
     updateDisplay();

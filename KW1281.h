@@ -12,8 +12,8 @@
 #define KW1281_H_
 
 #define ADR_Engine 0x01
-#define pinKLineRX 15
-#define pinKLineTX 14
+//#define pinKLineRX 15
+//#define pinKLineTX 14
 
 class speedo_Kw {
 public:
@@ -35,6 +35,7 @@ public:
 	bool connect(uint8_t addr, int baudrate) ;
 	bool readConnectBlocks();
 	bool readError();
+	bool deleteError();
 	bool readSensors(int group);
 	void updateDisplay();
 	void OBD_setup();
@@ -43,6 +44,7 @@ public:
 	int get_Pointer_for_Array();
 	int get_Reason_Temp();
 	int get_Reason_Pointer();
+	int zaehler;
 	char printBuffer[50];
 private:
 	};

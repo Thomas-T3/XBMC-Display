@@ -40,7 +40,8 @@ const int button_right=41;
 const int button_left=43;
 int button_state_right= HIGH;
 int button_state_left= HIGH;
-int button_counter;
+int button_counter=0;
+int button_counter2=0;
 char buffer[60];
 // start all corresponding server in initialize the vars
 void setup()
@@ -57,11 +58,25 @@ void ram_info()
 	byte *buf;
 	while ((buf = (byte *) malloc(--size)) == NULL);
 	free(buf);
-  //#ifdef TEMP_DEBUG
+  #ifdef TEMP_DEBUG
 	Serial.print(size);
 	Serial.println(" Byte heap free");
-//#endif
+#endif
 }
+int Hauptmenue(void)
+		{
+	OLED.clear_screen();
+		OLED.draw_linie(0,20);
+		OLED.draw_clock(3,0);
+		OLED.draw_oil(32,10);
+		OLED.draw_water(34,0);
+		OLED.draw_batterie (27,47);
+		OLED.draw_linie(0,42);
+		OLED.draw_sat(60,47);
+		OLED.string(VISITOR_SMALL_1X_FONT,"H/m",0,6);
+		OLED.string(VISITOR_SMALL_1X_FONT,"OUT",4,6);
+		OLED.string(VISITOR_SMALL_1X_FONT,"DAT.",0,1);
+		}
 int main(void)
 {
 	init();
@@ -71,17 +86,8 @@ int main(void)
 	OLED.string(VISITOR_SMALL_2X_FONT,"Toms",6,1);
 	OLED.string(VISITOR_SMALL_2X_FONT,"Bus-Tacho",2,4);
 	delay(5000);
-	OLED.clear_screen();
-	OLED.draw_linie(0,20);
-	OLED.draw_clock(3,0);
-	OLED.draw_oil(32,10);
-	OLED.draw_water(34,0);
-	OLED.draw_batterie (27,47);
-	OLED.draw_linie(0,42);
-	OLED.draw_sat(60,47);
-	OLED.string(VISITOR_SMALL_1X_FONT,"H/m",0,6);
-	OLED.string(VISITOR_SMALL_1X_FONT,"OUT",4,6);
-	OLED.string(VISITOR_SMALL_1X_FONT,"DAT.",0,1);
+
+	Hauptmenue();
 
 	//*********************************km_Stand von SD Karte****************
 	//			long km_first= km_Stand->speicherwert;
@@ -103,48 +109,62 @@ int main(void)
 			delay(100);
 			button_right_temp2=digitalRead(button_right);
 			if ((button_right_temp==LOW)&&(button_right_temp2==LOW)&& (button_counter!=1)){ // ja da war was, dann los
-				button_counter=1;
+				button_counter=(button_counter+1);
 				delay(200);
-				OLED.clear_screen();
+				if (button_counter==1){
+					OLED.clear_screen();
 		// ANFANG **************************MOTORKONTROLLEUCHTE + STEUERGERÄTEDATEN******************
-				OLED.draw_Mil(0,6);
-				OLED.string(VISITOR_SMALL_1X_FONT,"Fehlerspeicher",4,1);
-				OLED.draw_linie(0,15);
-				Mkl->readError();
-				int Fehlercode= Mkl->get_Error_Temp();
-				char Fehler1[7];
-				sprintf(Fehler1,"%i",Fehlercode);
-				OLED.string(VISITOR_SMALL_1X_FONT,Fehler1,0,2);
-				int pointer_for_array=Mkl->get_Pointer_for_Array();
-				char Pointer1[3];
-				sprintf(Pointer1,"%i",pointer_for_array);
-				int reason=Mkl->get_Reason_Temp();
-				char Reason1[4];
-				sprintf(Reason1,"%i",reason);
-				int reason_Pointer=Mkl->get_Reason_Pointer();
-				char Pointer2[4];
-				sprintf(Pointer2,"%i",reason_Pointer);
+					OLED.draw_Mil(0,6);
+					OLED.string(VISITOR_SMALL_1X_FONT,"Fehlerspeicher",4,1);
+					OLED.draw_linie(0,15);
+
+					Mkl->OBD_loop();//readError();
+					int AnzahlFehler=Mkl->zaehler;
+					if (AnzahlFehler==0){
+						OLED.string(VISITOR_SMALL_1X_FONT,"kein Fehler",4,4);
+					}
+					else{
+						char Anz_Fehler[2];
+						sprintf(Anz_Fehler,"%i",AnzahlFehler);
+						OLED.string(VISITOR_SMALL_1X_FONT,Anz_Fehler,4,4);
+						OLED.string(VISITOR_SMALL_1X_FONT,"Fehler",6,4);
+						int Fehlercode= Mkl->get_Error_Temp();
+						char Fehler1[7];
+						sprintf(Fehler1,"%i",Fehlercode);
+						OLED.string(VISITOR_SMALL_1X_FONT,Fehler1,0,2);
+						int pointer_for_array=Mkl->get_Pointer_for_Array();
+						char Pointer1[3];
+						sprintf(Pointer1,"%i",pointer_for_array);
+						int reason=Mkl->get_Reason_Temp();
+						char Reason1[4];
+						sprintf(Reason1,"%i",reason);
+						OLED.string(VISITOR_SMALL_1X_FONT,Reason1,4,2);
+						int reason_Pointer=Mkl->get_Reason_Pointer();
+						char Pointer2[4];
+						sprintf(Pointer2,"%i",reason_Pointer);
+					}
+
+				}
 
 		#ifdef TEMP_DEBUG
-				Serial.print("Fehlercode / Pointer: ");
-				Serial.print(Fehler1);
-				Serial.print(" / ");
-				Serial.println(Pointer1);
-				Serial.print("Fehlergrund / Pointer: ");
-				Serial.print(Reason1);
-				Serial.print(" / ");
-				Serial.println(Pointer2);
-				Serial.print("Taster rechts low:");
-				Serial.print(button_counter);
+					Serial.print("Fehlercode / Pointer: ");
+					Serial.print(Fehler1);
+					Serial.print(" / ");
+					Serial.println(Pointer1);
+					Serial.print("Fehlergrund / Pointer: ");
+					Serial.print(Reason1);
+					Serial.print(" / ");
+					Serial.println(Pointer2);
+					Serial.print("Taster rechts low:");
+					Serial.print(button_counter);
 		#endif
-			}
+				}
+				}
 			else {
-				Serial.print("Taster rechts high:");
-				Serial.print(button_counter);
+				//Serial.print("Taster rechts high:");
+				//Serial.print(button_counter);
 			}
-		}
-
-
+		//}
 
 		int button_left_temp=digitalRead(button_left);
 		int button_left_temp2;
@@ -152,18 +172,29 @@ int main(void)
 			delay(100);
 			button_left_temp2=digitalRead(button_left);
 			if ((button_left_temp==LOW)&&(button_left_temp2==LOW)&& (button_counter!=2)){
-				button_counter=2;
+				button_counter2=(button_counter2+1);
 				delay(200);
-				OLED.clear_screen();
-				OLED.string(VISITOR_SMALL_2X_FONT,"Seite 2",1,1);
-				delay(2000);
-				OLED.clear_screen();
-				Serial.print("Taster links low:");
-				Serial.print(button_counter);
+				if (button_counter2==1){
+					OLED.clear_screen();
+					OLED.string(VISITOR_SMALL_1X_FONT,"Fehlerspeicher",3,1);
+					OLED.string(VISITOR_SMALL_1X_FONT,"wird geloescht",3,2);
+					delay(5000);
+					Mkl->deleteError();
+					OLED.string(VISITOR_SMALL_2X_FONT,"Fertig",3,4);
+					//OLED.clear_screen();
+					delay(5000);
+					button_counter2=2;
+				}
+				if (button_counter2==2){
+					Hauptmenue();
+					button_counter=0;
+					button_counter2=0;
+				}
 			}
 		}
 // ENDE **************************MOTORKONTROLLEUCHTE + STEUERGERÄTEDATEN******************
 		if (button_counter==0){
+
 			ram_info();
 			int disp_zeile_bak[21];// backup bestimmter werte um abzuschÃ¤tzen ob die Zeile geupdated werden sollte
 
@@ -218,29 +249,30 @@ int main(void)
 			//	Serial.print("Spannung: ");
 			//	Serial.print("alter Wert:");
 			analog_value = analogRead(0);
-			Serial.print("analog:");
-			Serial.println(analog_value);
+
 			uint32_t milli_volt = (analog_value*4.88); //vorher 4.01!! 400*5000/1024 ~=400*5 = 2000
 			milli_volt = (milli_volt*5.18);
-			Serial.print("milli_volt:");
-			Serial.println(milli_volt);
 			int ganze_volt=(milli_volt/1000); // 2000/1000 = 2
-			Serial.print("ganze_volt:");
-			Serial.println(ganze_volt);
 			int nachkomma=(milli_volt%1000)/10; // (2000%1000)/10 = 0/10 = 0 oder (2120%1000)/10=120/10=12
 			if( (abs(disp_zeile_bak[BATTERIE]-(nachkomma+1))>50)  ) {
+				disp_zeile_bak[BATTERIE]=(nachkomma+1);
+				char mein_string[3];
+				sprintf(mein_string,"%i,%1i V ",ganze_volt,nachkomma); // "in volt 2.0"
+				if (ganze_volt>0 && ganze_volt<16){
+					OLED.string(VISITOR_SMALL_1X_FONT,mein_string,8,7);
+				}
+				else{
+					OLED.string(VISITOR_SMALL_1X_FONT,"--,-- V",8,7);
+				}
+#ifdef TEMP_DEBUG
+					Serial.print("analog:");
+					Serial.println(analog_value);
+					Serial.print("milli_volt:");
+					Serial.println(milli_volt);
+					Serial.print("ganze_volt:");
+					Serial.println(ganze_volt);
 					Serial.print("nachkomma:");
 					Serial.println(nachkomma);
-					disp_zeile_bak[BATTERIE]=(nachkomma+1);
-					char mein_string[3];
-					sprintf(mein_string,"%i,%1i V ",ganze_volt,nachkomma); // "in volt 2.0"
-					if (ganze_volt>0 && ganze_volt<16){
-						OLED.string(VISITOR_SMALL_1X_FONT,mein_string,8,7);
-					}
-					else{
-						OLED.string(VISITOR_SMALL_1X_FONT,"--,-- V",8,7);
-					}
-#ifdef TEMP_DEBUG
 					Serial.println("Ausgabe Spannung: ");
 					Serial.print(mein_string);
 #endif
@@ -401,7 +433,7 @@ int main(void)
 
 		//*************************Anfang Temperaturen per LM73*************
 
-			pTemp->read_air_temp();
+			/*pTemp->read_air_temp();
 			int InnenTemperaturwert;
 			InnenTemperaturwert=pTemp->get_air_temp();
 			if( (abs(disp_zeile_bak[INNENTEMPERATUR]-(InnenTemperaturwert+1))>1) ||
@@ -423,7 +455,7 @@ int main(void)
 				Serial.println(mein_string5);
 #endif
 			}
-
+*/
 			pTemp->read_air_temp_out();
 			int AussenTemperaturwert;
 			AussenTemperaturwert=pTemp->get_air_temp_out();
@@ -465,7 +497,7 @@ int main(void)
 			if ((Monat>03) && (Monat<=10)){
 				winter =1;
 			}
-			char Datum[6];
+			char Datum[4];
 			sprintf(Datum,"%02i.%02i",Tag,Monat);
 #ifdef TEMP_DEBUG
 			Serial.print("Datum");
@@ -493,12 +525,12 @@ int main(void)
 					STD=(STD-24);
 				}
 				int MIN = (Time)%100;
-				char Zeit[6];
+				char Zeit[4];
 				sprintf(Zeit,"%2i:%02i",STD,MIN);
-#ifdef TEMP_DEBUG
+//#ifdef TEMP_DEBUG
 		Serial.print("Zeit");
 		Serial.println(Zeit);
-#endif
+//#endif
 				if (Time>0 && Time<2359){
 					OLED.string(VISITOR_SMALL_1X_FONT,Zeit,4,0);
 				}
@@ -519,10 +551,10 @@ int main(void)
 					int MIN2 = (Time2)%100;
 					char Zeit2[6];
 					sprintf(Zeit2,"%2i:%02i",STD2,MIN2);
-#ifdef TEMP_DEBUG
+//#ifdef TEMP_DEBUG
 				Serial.print("Zeit2");
 				Serial.println(Zeit2);
-#endif
+//#endif
 					if (Time2>0 && Time2<2359){
 						OLED.string(VISITOR_SMALL_1X_FONT,Zeit2,4,0);
 					}
@@ -540,19 +572,19 @@ int main(void)
 		//**************************Anzahl Satelliten per $GPGGA
 
 		//**************************Höhe über Geoid in m
-			int Hoehe=gps->gps_alt_temp;
+			int Hoehe=gps->gps_alt;
 			int HoeheInMeter = Hoehe/10;
 #ifdef TEMP_DEBUG
 			Serial.print("Höhe ");
 			Serial.println(HoeheInMeter);
 #endif
 			char hoehe_in_m[4];
-			sprintf(hoehe_in_m,"%3i",HoeheInMeter);
-			if( (abs(disp_zeile_bak[HOEHE]-(HoeheInMeter+1))>3) ) {
+			sprintf(hoehe_in_m,"%03i",HoeheInMeter);
+			if( (abs(disp_zeile_bak[HOEHE]-(HoeheInMeter+1))>5) ) {
 					disp_zeile_bak[HOEHE]=(HoeheInMeter+1);
 					Serial.print("Neue Höhe:");
 					Serial.println(HoeheInMeter);
-					if (HoeheInMeter<1000){
+					if ((HoeheInMeter<1000)&& (HoeheInMeter>0)){
 						OLED.string(VISITOR_SMALL_1X_FONT,hoehe_in_m,0,7);
 					}
 			}

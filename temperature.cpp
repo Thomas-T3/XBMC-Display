@@ -103,7 +103,7 @@ void speedo_temperature::read_oil_temp() {
 	if(mV_oil_center>0 && mV_oil_center<1020){
 		mV_oil_center=mV_oil_center * 4.88;//4.25;
 		uint16_t r_temp=pulldown_of_oil_divider(5000,mV_oil_center,1000);
-		#ifdef TEMP_DEBUG
+#ifdef TEMP_DEBUG
 		// debug //
 		Serial.print("analogRead: ");
 		Serial.println(analogRead(OIL_TEMP_PIN));
@@ -181,7 +181,7 @@ void speedo_temperature::read_water_temp() {
 		mV_center=mV_center*4.88;
 		uint16_t r_temp=pulldown_of_divider(5000,mV_center,1000);
 
-//#ifdef TEMP_DEBUG
+#ifdef TEMP_DEBUG
 		// debug //
 		Serial.print("water analog Read: ");
 		Serial.println(analogRead(WATER_TEMP_PIN));
@@ -192,7 +192,7 @@ void speedo_temperature::read_water_temp() {
 		Serial.print("water pulldown_of_divider: ");
 		Serial.println(r_temp);
 		// debug //
-//#endif
+#endif
 
 		if(r_temp<water_r_werte[18]){
 			water_temp_value=flatIt(10*water_t_werte[18],&water_temp_value_counter,60,water_temp_value);
@@ -205,13 +205,13 @@ void speedo_temperature::read_water_temp() {
 					int differ_t=water_t_werte[i]-water_t_werte[j]; // wie weit sind die realen temp werte auseinander 5Â°C
 					int aktueller_wert=round(10*(water_t_werte[i]-offset*differ_t/differ_r));
 					water_temp_value=flatIt(aktueller_wert,&water_temp_value_counter,60,water_temp_value);
-//#ifdef TEMP_DEBUG
+#ifdef TEMP_DEBUG
 
 					Serial.print(" water direkte messung ");
 					Serial.print(aktueller_wert);
 					Serial.print(" water und geplaettet: ");
 					Serial.println(int(round(water_temp_value)));
-//#endif
+#endif
 					water_temp_fail_status=0;
 					break; // break the for loop
 				};
@@ -243,51 +243,50 @@ void speedo_temperature::read_air_temp() {
 	byte msb;
 	byte lsb;
 	I2c.read(sensorAddressIn,0x00,2);
-//#ifdef TEMP_DEBUG
+#ifdef TEMP_DEBUG
 	Serial.println("request 1 abgeschickt");
 
-//#endif
+#endif
 	if (I2c.available() >= 2){  // if two bytes were received
-//#ifdef TEMP_DEBUG
+#ifdef TEMP_DEBUG
 		Serial.println("2 Byte im Puffer");
-//#endif
+#endif
 		msb = I2c.receive();  // receive high byte (full degrees)
 		lsb = I2c.receive();  // receive low byte (fraction degrees)
 		char pruefstring1[10];
 		char pruefstring2[10];
 		sprintf(pruefstring1,"%i",msb);
 		sprintf(pruefstring2,"%i",lsb);
-//#ifdef TEMP_DEBUG
-//		Serial.println("Wert Temp Innen:");
-//		Serial.println(pruefstring1);
-//		Serial.println(pruefstring2);
+#ifdef TEMP_DEBUG
+		Serial.println("Wert Temp Innen:");
+		Serial.println(pruefstring1);
+		Serial.println(pruefstring2);
 		//25° = 0000 1100 1000 0000 LM73 11bit
 		// 9° = 0000 0100 1000 0000
 		//1°  = 0000 0000 1000 0000
 		//-1° = 1111 1111 1000 0000
-//#endif
+#endif
 		air_temp_value = ((msb) <<1);  // MSB
 
-//#ifdef TEMP_DEBUG
-//		Serial.print("air1: ");
-//		Serial.println(air_temp_value);
-//#endif
+#ifdef TEMP_DEBUG
+		Serial.print("air1: ");
+		Serial.println(air_temp_value);
+#endif
 		air_temp_value|= (lsb >> 5);    // LSB
-//#ifdef TEMP_DEBUG
-//		Serial.print("air2: ");
-//		Serial.println(air_temp_value);
-//#endif
+#ifdef TEMP_DEBUG
+		Serial.print("air2: ");
+		Serial.println(air_temp_value);
+#endif
 		air_temp_value = round(air_temp_value); // round and save
-//#ifdef TEMP_DEBUG
-//		Serial.print("Air value IN: "); Serial.println(air_temp_value);
-
-//#endif
+#ifdef TEMP_DEBUG
+		Serial.print("Air value IN: "); Serial.println(air_temp_value);
+#endif
 
 	} else {
 		air_temp_value = 999;
-//#ifdef TEMP_DEBUG
+#ifdef TEMP_DEBUG
 		Serial.println("ALARM keine Antwort vom Innentemperatursensor!!");
-//#endif
+#endif
 	};
 
 }
