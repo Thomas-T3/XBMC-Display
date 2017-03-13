@@ -112,7 +112,7 @@ void speedo_Kw::disconnect(){
   	 Serial.println(data, HEX);
 //#endif
    //*********************  ADDED 4ms delay ****************************************************************
-	delay(4);
+	delay(5);
 	Serial3.write(data);                // sendChar() 28.04.2016 20:35
     delayMicroseconds(1300);            // Uart byte Tx duration at 9600 baud ~= 1040 us
     uint8_t dummy = Serial3.read();     // Read Echo from the line
@@ -148,22 +148,21 @@ void speedo_Kw::disconnect(){
 	    uint8_t data = Serial3.read();
 	    Serial.print("ECU:");
 	    Serial.println(data, HEX);
-	    //while (data == 0xff) {
-	    	//data = Serial3.read();
-	    //}
+	   while (data == 0xff) {
+		   data = Serial3.read();
+	    }
 	    return data;
 	  }
 
   void speedo_Kw::send5baud(uint8_t data) {
     // // 1 start bit, 7 data bits, 1 parity, 1 stop bit
-	  Serial.println("send5baud:");
-	  #define bitcount 10
+  Serial.println("send5baud:");
+  #define bitcount 10
   byte bits[bitcount];
   byte even = 1;
   byte bit;
-  //pinMode(pinKLineTX, OUTPUT);
-  //digitalWrite(pinKLineTX, LOW);
-  delay(500);
+
+ // delay(500);
   for (int i = 0; i < bitcount; i++) {
       bit = 0;
       if (i == 0)  bit = 0;
@@ -174,13 +173,13 @@ void speedo_Kw::disconnect(){
         even = even ^ bit;
       }
       Serial.print("bit");
-          Serial.print(i);
-          Serial.print("=");
-          Serial.print(bit);
-          if (i == 0) Serial.print(" startbit");
-            else if (i == 8) Serial.print(" parity");
-            else if (i == 9) Serial.print(" stopbit");
-          Serial.println();
+      Serial.print(i);
+      Serial.print("=");
+      Serial.print(bit);
+      //if (i == 0) Serial.print(" startbit");
+      //else if (i == 8) Serial.print(" parity");
+      //else if (i == 9) Serial.print(" stopbit");
+      Serial.println();
       bits[i] = bit;
     }
     // now send bit stream
@@ -190,13 +189,13 @@ void speedo_Kw::disconnect(){
     	  delay(200);
     	  if (i == bitcount) break;
       }
-     if (bits[i] == 1) {
-        // high
+     //if (bits[i] == 1) {
+         // high
     	 // digitalWrite(pinKLineTX, LOW);
-      } else {
+     // } else {
         // low
     	  //digitalWrite(pinKLineTX, HIGH);
-      }
+    // }
     }
     Serial3.flush();
   };
@@ -215,12 +214,12 @@ void speedo_Kw::disconnect(){
     Serial.println(blockCounter);
     // show data
     Serial.print("OUT:");
-    for (int i=0; i < size; i++){
-      uint8_t data = s[i];
-      Serial.print(data, HEX);
-      Serial.print(" ");
-    }
-    Serial.println();
+   // for (int i=0; i < size; i++){
+   //   uint8_t data = s[i];
+   //   Serial.print(data, HEX);
+   //   Serial.print(" ");
+   // }
+   // Serial.println();
     for (int i=0; i < size; i++){
       uint8_t data = s[i];
       obdWrite(data);
@@ -257,7 +256,8 @@ void speedo_Kw::disconnect(){
     unsigned long timeout = millis() + 1000;
     while ((recvcount == 0) || (recvcount != size)) {
       while (Serial3.available()){
-        data = obdRead();
+        Serial.print("Serial3available");
+    	  data = obdRead();
         s[recvcount] = data;
         recvcount++;
         if ((size == 0) && (recvcount == 1)) {
@@ -277,11 +277,18 @@ void speedo_Kw::disconnect(){
         }
         if ( ((!ackeachbyte) && (recvcount == size)) ||  ((ackeachbyte) && (recvcount < size)) ){
           obdWrite(data ^ 0xFF);  // send complement ack
+          if (maxsize == 3) {
+        	  break;
+          }
         }
         timeout = millis() + 1000;
       }
+      while (!Serial3.available()){
+    	  Serial.println("Serial3 not available!");
+      }
       if (millis() >= timeout){
-        Serial.println("ERROR: timeout");
+        Serial.print("ERROR: timeout:");
+        Serial.println(timeout);
         disconnect();
         errorTimeout++;
         return false;
@@ -317,17 +324,21 @@ void speedo_Kw::disconnect(){
 	  Serial.println(baudrate);
 	  blockCounter = 0;
 	  currAddr = 0;
-	  Serial3.begin(baudrate);
+	 // Serial3.begin(baudrate);
 	  KWP5BaudInit(addr);
 	    // answer: 0x55, 0x01, 0x8A
-	    char s[3];
+	  Serial3.begin(9600);
+	    // Empty the Serial
+	    while (Serial3.available() > 0){
+	      Serial3.read();
+	  }
+
+	  char s[3];
 	    int size = 3;
 	    if (!KWPReceiveBlock(s, 3, size)) {
 	    	return false;
 	    }
-	    if (    (((uint8_t)s[0]) != 0x55)
-	            ||   (((uint8_t)s[1]) != 0x01)
-	            ||   (((uint8_t)s[2]) != 0x8A)   ) {
+	    if (    (((uint8_t)s[0]) != 0x55)||   (((uint8_t)s[1]) != 0x01) ||   (((uint8_t)s[2]) != 0x8A)   ) {
 	      disconnect();
 	      errorData++;
 	      return false;
@@ -356,9 +367,7 @@ void speedo_Kw::disconnect(){
       }
       if (!KWPSendAckBlock()) return false;
     }
-
     Serial.print("label=");
-
     return true;
   }
 
@@ -389,8 +398,8 @@ void speedo_Kw::disconnect(){
 		  MKL=true;
 	  }
   #ifdef DEBUG
-    Serial.print("counter=");
-    Serial.println(counter);
+	  Serial.print("counter=");
+	  Serial.println(counter);
   #endif
   /* Fehlerbytes auslesen:
    *  Beispielstring: 12 B FC 2 A 1E 2 6 1D 2 12 1F 46 3A 23 46 3A 23 3 (>>HEX Daten!!<<)
@@ -406,69 +415,69 @@ void speedo_Kw::disconnect(){
    *  An Stelle 16 und 17 kommt der 5. Fehler, an Stelle 18 der 5. Fehlergrund
    *  Am Ende steht immer eine 3.
   */
-  for (int idx=0; idx < counter; idx++){
-    byte f1=s[3*idx+3];//[3 + idx*3];
-    byte f2=s[3*idx+4];//[3 + idx*3+1];
-    byte g=s[3*idx+5];//[3 + idx*3+2];
-    Errorcode= ((256*f1)+f2);          //Umrechnung der Fehlercodes in Dezimalzahlen
-    Grund=g;
-    Serial.print("Errorcode: ");
-    Serial.print(Errorcode);
-    Serial.print("; Reason: ");
-    Serial.println(Grund);
-    switch (Errorcode){
-        case 282: e=0; break;
-        case 513: e=1; break;
-        case 515: e=2; break;
-        case 516: e=3; break;
-        case 518: e=4; break;
-        case 520: e=5; break;
-        case 522: e=6; break;
-        case 523: e=7; break;
-        case 524: e=8; break;
-        case 525: e=9; break;
-        case 530: e=10; break;
-        case 532: e=11; break;
-        case 533: e=12; break;
-        case 537: e=13; break;
-        case 546: e=14; break;
-        case 625: e=15; break;
-        case 635: e=16; break;
-        case 1247: e=17; break;
-        case 1249: e=18; break;
-        case 1250: e=19; break;
-        case 1251: e=20; break;
-        case 1252: e=21; break;
-        case 1259: e=22; break;
-        case 17978: e=23; break;
-        case 65335: e=24; break;
-        default: e=25; break;
-        return e;
-    }
-    switch (Grund){
-    	case 1: f=0; break;
-    	case 2: f=1; break;
-    	case 3: f=2; break;
-    	case 4: f=3; break;
-    	case 6: f=4; break;
-    	case 7: f=5; break;
-    	case 8: f=6; break;
-    	case 16: f=7; break;
-    	case 17: f=8; break;
-    	case 18: f=9; break;
-    	case 19: f=10; break;
-    	case 27: f=11; break;
-    	case 28: f=12; break;
-    	case 29: f=13; break;
-    	case 30: f=14; break;
-    	case 31: f=15; break;
-    	case 36: f=16; break;
-    	case 37: f=17; break;
-    	case 44: f=18; break;
-    	case 45: f=19; break;
-    	default: f=20; break;
-    	return f;
-    }
+	  for (int idx=0; idx < counter; idx++){
+		  byte f1=s[3*idx+3];//[3 + idx*3];
+		  byte f2=s[3*idx+4];//[3 + idx*3+1];
+		  byte g=s[3*idx+5];//[3 + idx*3+2];
+		  Errorcode= ((256*f1)+f2);          //Umrechnung der Fehlercodes in Dezimalzahlen
+		  Grund=g;
+		  Serial.print("Errorcode: ");
+		  Serial.print(Errorcode);
+		  Serial.print("; Reason: ");
+		  Serial.println(Grund);
+		  switch (Errorcode){
+		  	  case 282: e=0; break;
+		  	  case 513: e=1; break;
+		  	  case 515: e=2; break;
+		  	  case 516: e=3; break;
+		  	  case 518: e=4; break;
+		  	  case 520: e=5; break;
+		  	  case 522: e=6; break;
+		  	  case 523: e=7; break;
+		  	  case 524: e=8; break;
+		  	  case 525: e=9; break;
+		  	  case 530: e=10; break;
+		  	  case 532: e=11; break;
+		  	  case 533: e=12; break;
+		  	  case 537: e=13; break;
+		  	  case 546: e=14; break;
+		  	  case 625: e=15; break;
+		  	  case 635: e=16; break;
+		  	  case 1247: e=17; break;
+		  	  case 1249: e=18; break;
+		  	  case 1250: e=19; break;
+		  	  case 1251: e=20; break;
+		  	  case 1252: e=21; break;
+		  	  case 1259: e=22; break;
+		  	  case 17978: e=23; break;
+		  	  case 65335: e=24; break;
+		  	  default: e=25; break;
+		  	  return e;
+		  }
+		  switch (Grund){
+		  	  case 1: f=0; break;
+		  	  case 2: f=1; break;
+		  	  case 3: f=2; break;
+		  	  case 4: f=3; break;
+		  	  case 6: f=4; break;
+		  	  case 7: f=5; break;
+		  	  case 8: f=6; break;
+		  	  case 16: f=7; break;
+		  	  case 17: f=8; break;
+		  	  case 18: f=9; break;
+		  	  case 19: f=10; break;
+		  	  case 27: f=11; break;
+		  	  case 28: f=12; break;
+		  	  case 29: f=13; break;
+		  	  case 30: f=14; break;
+		  	  case 31: f=15; break;
+		  	  case 36: f=16; break;
+		  	  case 37: f=17; break;
+		  	  case 44: f=18; break;
+		  	  case 45: f=19; break;
+		  	  default: f=20; break;
+		  	  return f;
+		  }
 
   #ifdef DEBUG
       Serial.print("Fehlerbyte1: ");
@@ -478,17 +487,12 @@ void speedo_Kw::disconnect(){
       Serial.print("; Grund: ");
       Serial.println('C'&g);
   #endif
-
-  //******************************************Neu********************
-      readFromProgmemArray(e,f);
-      //readFromProgmemArray(e,f);
-
-  //**********************************Ende neu*********************
+      	  readFromProgmemArray(e,f);
     }
-     if (size>28) {
+     //if (size>28) {
     //  KWPSendAckBlock;
     //  KWPReceiveBlock(s, 64, size);
-    }
+   // }
     if (s[6] != '\x88') {
     	MKL=true;
     	//KWPSendAckBlock;
@@ -496,48 +500,48 @@ void speedo_Kw::disconnect(){
       //return false;
     }
      // show data
-     if (s[5]=='\x88'){
-      Serial.println ("Kein Fehler gespeichert");
-      MKL=false;
+    if (s[5]=='\x88'){
+    	Serial.println ("Kein Fehler gespeichert");
+    	MKL=false;
      }
-     //else{
-     // if (!KWPSendAckBlock()) return false;
-    // Serial.println();
-    //blockCounter++;
-    //return true;
-    // }
-   //int count = (size-4) / 3;
-   // Serial.print(F("count="));
-   // Serial.println(count);
-   return (KWPSendBlock(s, 4));
+     else{
+    	 if (!KWPSendAckBlock()) return false;
+    	 Serial.println();
+    	 blockCounter++;
+    	 return true;
+     }
+    int count = (size-4) / 3;
+    Serial.print("count=");
+    Serial.println(count);
+    return (KWPSendBlock(s, 4));
   }
 //*************************************Fehlerspeicher loeschen **********************
   bool speedo_Kw::deleteError (){
-	  Serial.print("deleteError:");
-	  int del_error=0;
-	  	  char s[64];
-	  	  bool MKL=false;
-	  if (currAddr != ADR_Engine) {
-	 		  connect(ADR_Engine, 9600);
-	        } else {
-	     	   Serial.println("+++++++++Fehlerspeicher loeschen+++++++++++");
-	        };
-	 	  sprintf(s,"\x03%c\x05\x03",blockCounter, del_error);
-	 	  if (!KWPSendBlock(s, 4)) return false;
-	 	  int size = 0;
-	 	  KWPReceiveBlock(s, 64, size);
+	Serial.print("deleteError:");
+	int del_error=0;
+	char s[64];
+	bool MKL=false;
+	if (currAddr != ADR_Engine) {
+		connect(ADR_Engine, 9600);
+    } else {
+    	Serial.println("+++++++++Fehlerspeicher loeschen+++++++++++");
+    };
+ 	sprintf(s,"\x03%c\x05\x03",blockCounter, del_error);
+	if (!KWPSendBlock(s, 4)) return false;
+	int size = 0;
+	KWPReceiveBlock(s, 64, size);
   }
 
 
   bool speedo_Kw::readSensors(int group){
    Serial.print("------readSensors ");
    Serial.println(group);
-    char s[64];
-    sprintf(s, "\x04%c\x29%c\x03", blockCounter, group);
-    if (!KWPSendBlock(s, 5)) return false;
-    int size = 0;
-    KWPReceiveBlock(s, 64, size);
-    if (s[2] != '\xe7') {
+   char s[64];
+   sprintf(s, "\x04%c\x29%c\x03", blockCounter, group);
+   if (!KWPSendBlock(s, 5)) return false;
+   int size = 0;
+   KWPReceiveBlock(s, 64, size);
+   if (s[2] != '\xe7') {
       Serial.println("ERROR: invalid answer");
       disconnect();
       errorData++;
@@ -713,7 +717,7 @@ void speedo_Kw::disconnect(){
   char check[64];
   void speedo_Kw::OBD_setup(){
 	  Serial.print("OBD_setup:");
-      Serial3.begin(19200);
+      Serial3.begin(9600);//19200 vorher
       Serial.println("START");
     }
 

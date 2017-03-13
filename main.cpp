@@ -47,6 +47,7 @@ char buffer[60];
 void setup()
 {
 	Serial.begin(115200);
+	Serial3.begin(9600);
 	OLED.init(0xA8,0x28);
 	OLED.filled_rect(0,0,128,64,0x00);
 	//pSD->init();
@@ -82,6 +83,7 @@ int main(void)
 	init();
 	setup();
 	Serial.begin(115200);
+	//Serial3.begin(9600);
 	Serial.print("losgehts");
 	OLED.string(VISITOR_SMALL_2X_FONT,"Toms",6,1);
 	OLED.string(VISITOR_SMALL_2X_FONT,"Bus-Tacho",2,4);
@@ -145,6 +147,7 @@ int main(void)
 					}
 
 				}
+			}
 
 		#ifdef TEMP_DEBUG
 					Serial.print("Fehlercode / Pointer: ");
@@ -158,14 +161,7 @@ int main(void)
 					Serial.print("Taster rechts low:");
 					Serial.print(button_counter);
 		#endif
-				}
-				}
-			else {
-				//Serial.print("Taster rechts high:");
-				//Serial.print(button_counter);
-			}
-		//}
-
+		}
 		int button_left_temp=digitalRead(button_left);
 		int button_left_temp2;
 		if (button_left_temp==LOW){
@@ -192,6 +188,7 @@ int main(void)
 				}
 			}
 		}
+
 // ENDE **************************MOTORKONTROLLEUCHTE + STEUERGERÄTEDATEN******************
 		if (button_counter==0){
 
