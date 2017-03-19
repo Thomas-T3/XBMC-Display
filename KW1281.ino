@@ -153,6 +153,7 @@ uint8_t obdRead(){
 
 // 5Bd, 7O1
 void send5baud(uint8_t data){
+  
   // // 1 start bit, 7 data bits, 1 parity, 1 stop bit
   #define bitcount 10
   byte bits[bitcount];
@@ -198,7 +199,8 @@ void send5baud(uint8_t data){
 
 bool KWP5BaudInit(uint8_t addr){
   Serial.println("---KWP 5 baud init");
- // delay(3000);      
+ // delay(3000);  
+ Serial1.begin(9600);
   send5baud(addr);
   return true;
 }
@@ -315,7 +317,7 @@ bool KWPSendAckBlock(){
 }
 
 bool connect(uint8_t addr, int baudrate){  
-  Serial1.begin(9600);
+  
   Serial.print(F("------connect addr="));
   Serial.print(addr);
   Serial.print(" baud=");  
@@ -323,8 +325,10 @@ bool connect(uint8_t addr, int baudrate){
  
   blockCounter = 0;  
   currAddr = 0;
-  Serial1.begin(baudrate);       
+  pinMode(18, OUTPUT);
   KWP5BaudInit(addr);
+  Serial.print("Geht das?");
+  Serial1.begin(baudrate);     
   // answer: 0x55, 0x01, 0x8A          
   char s[3];
   ;
@@ -713,8 +717,8 @@ char check[64];
 void OBD_setup(){      
     Serial.begin(19200);
     Serial.println(F("Guten Tag"));
-    pinMode(18, OUTPUT); 
-     digitalWrite(18, HIGH);
+     
+ //  digitalWrite(18, HIGH);
     //Serial1.begin(9600); 
     // digitalWrite(Serial1,HIGH);
 //    Serial1.write("Hallo");
