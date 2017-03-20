@@ -111,12 +111,8 @@ void obdWrite(uint8_t data){
   Serial.println(data, HEX);
 #endif
  //*********************  ADDED 4ms delay ****************************************************************
-  delay(4);
-  delayMicroseconds(1300);            // Uart byte Tx duration at 9600 baud ~= 1040 us
-    uint8_t dummy = Serial3.read();     // Read Echo from the line
-    if (dummy != data ) {
-        return;   // compare received and transmitted char
-    }
+  delay(5);
+  
   Serial3.write(data);
 }
 
@@ -248,19 +244,19 @@ bool KWPReceiveBlock(char s[], int maxsize, int &size){
   Serial.print(" blockCounter=");
   Serial.println(blockCounter);
   if (size > maxsize) {
-    Serial.println("ERROR: invalid maxsize");
+    Serial.println("ERROR: invalid maxsize1");
     return false;
   }  
   unsigned long timeout = millis() + 1000; 
   while ((recvcount == 0) || (recvcount != size)) {
-    while (Serial3.available()>0){      
+    while (Serial3.available()){      
       data = obdRead();
       s[recvcount] = data;    
       recvcount++;      
       if ((size == 0) && (recvcount == 1)) {
         size = data + 1;
         if (size > maxsize) {
-          Serial.println("ERROR: invalid maxsize");
+          Serial.println("ERROR: invalid maxsize2");
           return false;
         }  
       }
