@@ -6,8 +6,8 @@ adapted for VW T3 with AGG Engine with Simos ECU
 Read the error list and several sensordata.
 
 wiring:
-RX --- to Hardware Serial1 (RX) (e.g. LM339)
-TX --- to Harware Serial1 (TX) (e.g. LM339)
+RX --- to Hardware Serial3 (RX) (e.g. LM339)
+TX --- to Harware Serial3 (TX) (e.g. LM339)
 
 NOTE: For the level shifting, I used a 'AutoDia K409 Profi USB adapter', disassembled it,
       and connected the Arduino to the level shifter chip (LM339) - the original FTDI chip TX line
@@ -111,13 +111,13 @@ void obdWrite(uint8_t data){
   Serial.println(data, HEX);
 #endif
  //*********************  ADDED 4ms delay ****************************************************************
-  //delay(4);
+  delay(4);
   delayMicroseconds(1300);            // Uart byte Tx duration at 9600 baud ~= 1040 us
     uint8_t dummy = Serial3.read();     // Read Echo from the line
     if (dummy != data ) {
         return;   // compare received and transmitted char
     }
-  Serial1.write(data);
+  Serial3.write(data);
 }
 
 //****************************************NEU****************
@@ -135,7 +135,7 @@ void readFromProgmemArray(int pos, int pos2) {
 
 uint8_t obdRead(){
   unsigned long timeout = millis() + 1000;
-  while (!Serial1.available()){
+  while (!Serial3.available()){
     if (millis() >= timeout) {
       Serial.println(F("ERROR: obdRead timeout"));
       disconnect();      
@@ -143,7 +143,7 @@ uint8_t obdRead(){
       return 0;
     }
   }
-  uint8_t data = Serial1.read();
+  uint8_t data = Serial3.read();
 #ifdef DEBUG  
   Serial.print("ECU:");
   Serial.println(data, HEX);    
@@ -153,7 +153,6 @@ uint8_t obdRead(){
 
 // 5Bd, 7O1
 void send5baud(uint8_t data){
-  
   // // 1 start bit, 7 data bits, 1 parity, 1 stop bit
   #define bitcount 10
   byte bits[bitcount];
@@ -187,24 +186,24 @@ void send5baud(uint8_t data){
     }
     if (bits[i] == 1){ 
 //       high
-      digitalWrite(18, HIGH);
+      Serial.print("1");
+      digitalWrite(14, HIGH);
     } else {
   //     low
-      digitalWrite(18, LOW);
+      Serial.print("0");
+      digitalWrite(14, LOW);
     }
    }
-//  Serial1.flush();
 }
-
 
 bool KWP5BaudInit(uint8_t addr){
   Serial.println("---KWP 5 baud init");
  // delay(3000);  
- Serial1.begin(9600);
+  Serial3.end(); 
   send5baud(addr);
-  return true;
+  Serial3.begin(9600);
+    return true;
 }
-
 
 bool KWPSendBlock(char *s, int size){
   Serial.print("---KWPSend sz=");
@@ -254,13 +253,8 @@ bool KWPReceiveBlock(char s[], int maxsize, int &size){
   }  
   unsigned long timeout = millis() + 1000; 
   while ((recvcount == 0) || (recvcount != size)) {
-    while (Serial1.available()){      
-      Serial.println("Test");
+    while (Serial3.available()>0){      
       data = obdRead();
-#ifdef DEBUG  
-        Serial.print("timeout:");
-        Serial.println(data, HEX);    
-#endif  
       s[recvcount] = data;    
       recvcount++;      
       if ((size == 0) && (recvcount == 1)) {
@@ -284,10 +278,6 @@ bool KWPReceiveBlock(char s[], int maxsize, int &size){
       timeout = millis() + 1000;        
     } 
     if (millis() >= timeout){
-      long Zeit=0;
-      Zeit=millis();
-      Serial.print("ERROR: timeout: ");
-      Serial.println(Zeit);
       disconnect();
       errorTimeout++;
       return false;
@@ -317,7 +307,6 @@ bool KWPSendAckBlock(){
 }
 
 bool connect(uint8_t addr, int baudrate){  
-  
   Serial.print(F("------connect addr="));
   Serial.print(addr);
   Serial.print(" baud=");  
@@ -325,13 +314,10 @@ bool connect(uint8_t addr, int baudrate){
  
   blockCounter = 0;  
   currAddr = 0;
-  pinMode(18, OUTPUT);
-  KWP5BaudInit(addr);
-  Serial.print("Geht das?");
-  Serial1.begin(baudrate);     
-  // answer: 0x55, 0x01, 0x8A          
+  pinMode(14, OUTPUT);
+   KWP5BaudInit(addr);
+ // answer: 0x55, 0x01, 0x8A          
   char s[3];
-  ;
   int size = 3;
   if (!KWPReceiveBlock(s, 3, size)) return false;
   if (    (((uint8_t)s[0]) != 0x55) 
@@ -351,14 +337,14 @@ bool connect(uint8_t addr, int baudrate){
 bool readConnectBlocks(){  
   // read connect blocks
   Serial.println(F("------readconnectblocks"));
- // lcd.print("KW1281 label");
   String info;  
   while (true){
+    
     int size = 0;
     char s[64];
     if (!(KWPReceiveBlock(s, 64, size))) return false;
     if (size == 0) return false;
-    if (s[2] == '\x09') break; 
+    if (s[2] == '\x09') break;
     if (s[2] != '\xF6') {
       Serial.println(F("ERROR: unexpected answer"));
       disconnect();
@@ -370,9 +356,7 @@ bool readConnectBlocks(){
     if (!KWPSendAckBlock()) return false;
   }
   Serial.print("label=");
-  Serial.println(info);
-  //lcd.setCursor(0, 1);
-  //lcd.print(info);      
+  Serial.println(info);    
   return true;
 }
 
@@ -715,22 +699,17 @@ void updateDisplay(){
 char check[64];     
 
 void OBD_setup(){      
-    Serial.begin(19200);
+    //Serial.begin(19200);
     Serial.println(F("Guten Tag"));
      
- //  digitalWrite(18, HIGH);
-    //Serial1.begin(9600); 
-    // digitalWrite(Serial1,HIGH);
-//    Serial1.write("Hallo");
+ //  digitalWrite(14, HIGH);
+    //Serial3.begin(9600); 
+    // digitalWrite(Serial3,HIGH);
+//    Serial3.write("Hallo");
   }
 
 void OBD_loop(){    
     Serial.println(F("AGG Abfrage"));
-    //while (Serial1.available()>0){
-//      Serial.println("Serial1 ist da");
-     
-  //  }
-  // Serial1.write("Hallo");
   currPage=2;
   switch (currPage){
     case 2:
@@ -739,11 +718,9 @@ void OBD_loop(){
       } else {
         Serial.println(F("+++++++++++++++Fehlerspeicher+++++++++++++++++++++"));
         readError(0);
-        
-       // Serial.println("Fertig!");
-        if (currAddr = 0xFF){
+      if (currAddr = 0xFF){
           break;
-        }
+      }
         readSensors(1);
         readSensors(2);
         readSensors(5);
