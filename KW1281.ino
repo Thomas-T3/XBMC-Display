@@ -112,7 +112,12 @@ void obdWrite(uint8_t data){
 #endif
  //*********************  ADDED 4ms delay ****************************************************************
   delay(5);
-  
+  Serial.write(data);                // sendChar() 28.04.2016 20:35
+  delayMicroseconds(1300);            // Uart byte Tx duration at 9600 baud ~= 1040 us
+  uint8_t dummy = Serial.read();     // Read Echo from the line
+  if (dummy != data ) {
+    return;   // compare received and transmitted char
+}
   Serial3.write(data);
 }
 
